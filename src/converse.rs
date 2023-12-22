@@ -45,6 +45,8 @@ impl Conversation {
                 content: first_message,
                 #[cfg(feature = "functions")]
                 function_call: None,
+                #[cfg(feature = "functions")]
+                name: None,
             }],
             #[cfg(feature = "functions")]
             functions: HashMap::with_capacity(4),
@@ -98,12 +100,15 @@ impl Conversation {
         &mut self,
         role: Role,
         message: S,
+        function_name: Option<String>
     ) -> crate::Result<CompletionResponse> {
         self.history.push(ChatMessage {
             role,
             content: message.into(),
             #[cfg(feature = "functions")]
             function_call: None,
+            #[cfg(feature = "functions")]
+            name: function_name,
         });
 
         #[cfg(feature = "functions")]
@@ -134,7 +139,7 @@ impl Conversation {
         &mut self,
         message: S,
     ) -> crate::Result<CompletionResponse> {
-        self.send_role_message(Role::User, message).await
+        self.send_role_message(Role::User, message, None).await
     }
 
     /// Sends a message with all functions to the ChatGPT API and returns the completion response.
@@ -150,6 +155,8 @@ impl Conversation {
             content: message.into(),
             #[cfg(feature = "functions")]
             function_call: None,
+            #[cfg(feature = "functions")]
+            name: None,
         });
         let resp = self
             .client
@@ -185,6 +192,8 @@ impl Conversation {
             content: message.into(),
             #[cfg(feature = "functions")]
             function_call: None,
+            #[cfg(feature = "functions")]
+            name: None,
         });
         let stream = self.client.send_history_streaming(&self.history).await?;
         Ok(stream)
@@ -276,13 +285,13 @@ impl Conversation {
         };
         if let Ok(result) = call_result {
             let result = serde_json::to_string(&result);
-            return Some(self.send_role_message(Role::Function, result.ok()?).await);
+            return Some(self.send_role_message(Role::Function, result.ok()?, Some(call.name.clone())).await);
         }
 
         if self.client.config.function_validation == FunctionValidationStrategy::Strict {
             // Sending error response from function
             Some(
-                self.send_role_message(Role::System, call_result.unwrap_err().to_string())
+                self.send_role_message(Role::System, call_result.unwrap_err().to_string(), Some(call.name.clone()))
                     .await,
             )
         } else {
