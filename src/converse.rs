@@ -124,8 +124,6 @@ impl Conversation {
         let msg = &resp.message_choices[0].message;
         self.history.push(msg.clone());
         if let Some(function_response) = self.process_possible_function_response(msg).await {
-            self.history
-                .push(function_response.message_choices[0].message.clone());
             Ok(function_response)
         } else {
             Ok(resp)
