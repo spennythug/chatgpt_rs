@@ -12,7 +12,7 @@ pub fn process_fn_macro(
     let input = syn::parse_macro_input!(function as ItemFn);
 
     let docs = extract_docs(&input);
-
+    println!("{:?}", &docs);
     if let None = docs {
         return syn::Error::new(input.span(), "This function does not have description. Make sure to add documentation to your ChatGPT functions.").into_compile_error().into()
     }
